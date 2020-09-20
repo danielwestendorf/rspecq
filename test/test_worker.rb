@@ -18,7 +18,7 @@ class TestWorker < RSpecQTest
       ]
     )
 
-    assert_equal expected, actual
+    assert_equal expected.sort, actual.sort
   end
 
   def test_files_to_example_ids_failure_fallback
@@ -36,6 +36,6 @@ class TestWorker < RSpecQTest
         ]
       )
 
-    assert_equal expected, actual
+    assert_equal expected.sort, actual.sort
   end
 end

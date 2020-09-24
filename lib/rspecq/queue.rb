@@ -67,6 +67,9 @@ module RSpecQ
 
     STATUS_INITIALIZING = "initializing".freeze
     STATUS_READY = "ready".freeze
+    DEFAULT_CONFIG = {
+      'fail_fast': nil
+    }.freeze
 
     attr_reader :redis
 
@@ -77,10 +80,15 @@ module RSpecQ
     end
 
     # NOTE: jobs will be processed from head to tail (lpop)
-    def publish(jobs)
+    def publish(jobs, config = {})
       @redis.multi do
         @redis.rpush(key_queue_unprocessed, jobs)
         @redis.set(key_queue_status, STATUS_READY)
+
+        DEFAULT_CONFIG.each do |key, value|
+          val = config[key] || value
+          @redis.hset(key_queue_config, key, val) unless val.nil?
+        end
       end.first
     end
 
@@ -125,7 +133,7 @@ module RSpecQ
     # Returns nil if the job hit the requeue limit and therefore was not
     # requeued and should be considered a failure.
     def requeue_job(job, max_requeues)
-      return false if max_requeues.zero?
+      return false if max_requeues.zero? || fail_fast_limit_reached?
 
       @redis.eval(
         REQUEUE_JOB,
@@ -241,9 +249,34 @@ module RSpecQ
       requeued - @redis.hkeys(key_failures)
     end
 
+    def fail_fast
+      return nil unless published?
+
+      raw_value = @redis.hget(key_queue_config, 'fail_fast')
+      @fail_fast ||= raw_value.nil? ? nil : raw_value.to_i
+    end
+
+
+    # Returns true if the number of failed tests, has surpassed the threshold
+    # to render the run unsuccessful. This is also used internally to block any
+    # new jobs being enqueued
+    def fail_fast_limit_reached?
+      return false if fail_fast.nil?
+
+      @redis.multi do
+        @redis.hlen(key_failures)
+        @redis.hlen(key_errors)
+      end.inject(:+) >= fail_fast
+    end
+
     # redis: STRING [STATUS_INITIALIZING, STATUS_READY]
     def key_queue_status
       key("queue", "status")
+    end
+
+    # redis:  HASH<config_key => config_value>
+    def key_queue_config
+      key("queue", "config")
     end
 
     # redis: LIST<job>

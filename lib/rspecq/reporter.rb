@@ -83,6 +83,13 @@ module RSpecQ
       end
 
       summary = ""
+      if @queue.fail_fast_limit_reached?
+        summary << "\n\n"
+        summary << "The limit of #{@queue.fail_fast} failures has been reached\n"
+        summary << "Aborting..."
+        summary << "\n"
+      end
+
       summary << failed_examples_section if !failures.empty?
 
       errors.each { |_job, msg| summary << msg }

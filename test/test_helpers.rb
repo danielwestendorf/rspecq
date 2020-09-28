@@ -42,9 +42,9 @@ module TestHelpers
   end
 
   # Returns the worker pid
-  def start_worker(build_id:, worker_id: rand_id, suite:)
+  def start_worker(build_id:, worker_id: rand_id, suite:, extra_args: '')
     Process.spawn(
-      "#{EXEC_CMD} -w #{worker_id} -b #{build_id}",
+      "#{EXEC_CMD} -w #{worker_id} -b #{build_id} #{extra_args}",
       chdir: suite_path(suite),
       out: (ENV["RSPECQ_DEBUG"] ? :out : File::NULL),
     )

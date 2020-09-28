@@ -104,4 +104,10 @@ class TestEndToEnd < RSpecQTest
       "./spec/fast_spec.rb",
     ], queue)
   end
+
+  def test_suite_with_failures_and_fail_fast
+    queue = exec_build("failing_suite", "--fail-fast 1")
+
+    assert queue.fail_fast_limit_reached?
+  end
 end
